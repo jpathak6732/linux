@@ -180,7 +180,29 @@ report_capability(struct capability_info *cap, uint8_t len, uint32_t lo,
 	}
 }
 
+/*
+ * Check if secondary procbased controls are enalbled or not
+ */
+void
+check_secondary_based_controls(void)
+{
+	uint32_t lo, hi;
+	rdmsr(IA32_VMX_PROCBASED_CTLS, lo, hi);
 
+	if ( hi & (1 << (63 - 32)))
+	{
+		/* Secondary Procbased controls */
+		printk("Secondary Procbased Controls are available");
+		rdmsr(IA32_VMX_PROCBASED_CTLS2, lo, hi);
+		pr_info("Secondary Procbased Controls MSR: 0x%llx\n",
+			(uint64_t)(lo | (uint64_t)hi << 32));
+		report_capability(procbased, 27, lo, hi);
+	}
+	else
+	{
+		printk("Secondary Procbased Controls are not available");
+	}
+}
 
 /*
  * detect_vmx_features
@@ -205,28 +227,7 @@ detect_vmx_features(void)
 	report_capability(procbased, 21, lo, hi);
 
 	/* Check Secondary Procbased Controls availability */
-	uint32_t lo2, hi2;
-	rdmsr(IA32_VMX_PROCBASED_CTLS, lo, hi);
-
-	if ( hi2 & (1 << (63 - 32)))
-	{
-		/* Secondary Procbased controls */
-		printk("Secondary Procbased Controls are available");
-		rdmsr(IA32_VMX_PROCBASED_CTLS2, lo2, hi2);
-		pr_info("Secondary Procbased Controls MSR: 0x%llx\n",
-			(uint64_t)(lo | (uint64_t)hi2 << 32));
-		report_capability(procbased, 27, lo2, hi2);
-	}
-	else
-	{
-		printk("Secondary Procbased Controls are not available");
-	}
-
-	/* Entry controls */
-	rdmsr(IA32_VMX_ENTRY_CTLS, lo, hi);
-	pr_info("Entry Controls MSR: 0x%llx\n",
-		(uint64_t)(lo | (uint64_t)hi << 32));
-	report_capability(entry, 11, lo, hi);
+	check_secondary_based_controls();
 
 	/* Exit controls */
 	rdmsr(IA32_VMX_EXIT_CTLS, lo, hi);
@@ -234,7 +235,11 @@ detect_vmx_features(void)
 		(uint64_t)(lo | (uint64_t)hi << 32));
 	report_capability(exit,13, lo, hi);
 
-	
+	/* Entry controls */
+	rdmsr(IA32_VMX_ENTRY_CTLS, lo, hi);
+	pr_info("Entry Controls MSR: 0x%llx\n",
+		(uint64_t)(lo | (uint64_t)hi << 32));
+	report_capability(entry, 11, lo, hi);
 
 }
 
